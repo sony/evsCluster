@@ -38,7 +38,7 @@ TERMS AND CONDITIONS FOR USE, MODIFICATION, REPRODUCTION AND DISTRIBUTION
     If Your version of the Work or Derivative Works support interaction remotely through a computer network, such version must also be available in Source form, as described in Section 3.1, and You must inform all interacting users how they can obtain a copy of such Source form through a medium customarily used for software exchange, in a timely manner, at a charge no more than the cost of distribution to the user.
 
     3.4 Notes
-    In any case of Section 3.1/3.2/3.3, You must clearly document how Your version of the Work or Derivative Works differ from the Work provided by the copyright owner, including but not limited to documenting any modified or added features, executables or modules, and You must fulfill all of the following requirements:
+    In any case of Section 3.1/3.2/3.3, You must clearly document how Your version of the Work or Derivative Works differs from the Work provided by the copyright owner, including but not limited to documenting any modified or added features, executables or modules, and You must fulfill all of the following requirements:
     (a) You must allow the copyright owner to include your modifications to the Work;
     (b) You must ensure that installation of Your version of the Work or Derivative Works do not prevent the user from installing or running the Work provided by the copyright owner. In addition, Your version must bear a name that is different from the name of the Work provided by the copyright owner; and
     (c) You must allow anyone who receives a copy of Your version of the Work or Derivative Works to make the Source or Object form of Your version, with or without further modifications, available to others under this License.
