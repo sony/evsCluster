@@ -1,7 +1,6 @@
 # Tutorial
 
 This is a tutorial about how to use the Python scripts with the sample data contained in the "data" folder.
-___
 
 
 
