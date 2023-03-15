@@ -62,7 +62,7 @@ Refer to "Tutorial.md" in the top folder.
 The software may be used only for non-commercial use.
 "Non-commercial" means research, education or evaluation purposes only.
 If you redistribute the software with modification, you have to provide the source code on request.
-For further details, refer to "License.txt" in the top folder.
+For further details, refer to "LICENSE.txt" in the top folder.
 
 
 
