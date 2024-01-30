@@ -47,7 +47,7 @@ class Subcluster:
     def __init__(self, x, y, polarity, timestamp_ms, ID):
         #self.subcluster_serial += 1
         #self.ID = self.subcluster_serial
-        self.ID = ID # ID values only larger than 0 are used
+        self.ID = ID # ID values larger than 0 are only used
         #self.prev = None
         #self.next = None
 
@@ -61,7 +61,7 @@ class Subcluster:
         self.list_unique_y = np.array( [y], dtype=np.int16 )
 
         self.event_history = np.array( [[ timestamp_ms, 1, polarity ]], dtype=np.int32 ) # event counter updated every 1 ms (by default) if a new event happens on the subcluster
-        self.track_history = np.array( [[ x, x, y, y, 1, polarity, 0 ]], dtype=np.int16 ) # tracking history written every time "update_subcluster()" func is called
+        self.track_history = np.array( [[ x, x, y, y, 1, polarity, 0 ]], dtype=np.int16 ) # tracking history is written every time "update_subcluster()" func is called
         self.inactive_flg = 0
         self.track_update_flg = 0
 
@@ -143,7 +143,7 @@ class Subcluster:
 
     def add_to_subcluster(self, x, y, polarity, timestamp_ms):
         # when the same pixel has already been regstered in the dominant subcluster, update its corresponding pixel's timestamp
-        # note a pxl with the same x and y might be already in the subcluster (and overwritten by another subcluster). So be sure not to add a duplicate pxl with the same coordinates
+        # note a pxl with the same x and y might be already in the subcluster (and overwritten by another subcluster). So be sure not to add a duplicate pxl with the same coordinate
         #(exactly_matched_idxes,) = np.where( np.sum( abs( sel_subcluster.list_xy - np.array([x,y], dtype=np.int16) ) , axis=1 ) == 0 )
         (matched_x_idxes,) = np.where( self.list_x == x )
         (exactly_matched_idx,) = np.where( self.list_y[matched_x_idxes] == y )
@@ -154,7 +154,7 @@ class Subcluster:
                 # when the polarity of an existing pxl has changed
                 self.list_polarity[ matched_x_idxes[exactly_matched_idx] ] = polarity
                 self.track_update_flg = 1
-            self.list_timestamp_ms[ matched_x_idxes[exactly_matched_idx] ] = timestamp_ms # simply update the timestamp of the same pixel postion
+            self.list_timestamp_ms[ matched_x_idxes[exactly_matched_idx] ] = timestamp_ms # simply update the timestamp of the same pixel coordinate
             self.update_event_history(polarity, timestamp_ms)
             return 1
         elif max( self.list_unique_x[-1] - self.list_unique_x[0] , self.list_unique_y[-1] - self.list_unique_y[0] ) < config.SUBCLUSTER_SIZE_LIMIT: # allow for each subcluster to grow up to 20(=19+1)) pxl length
@@ -245,7 +245,7 @@ def update_subclusters(timestamp_ms):
     # update "img_subsubcluster_idxes" and subcluster info/history
     common.img_subcluster_idxes = np.copy(common.blank_img_idx) # initialize "common.img_subcluster_idxes" with 0s
     for i,subcluster in enumerate(common.subclusters):
-        # update "common.img_subcluster_idxes". Notice only active subclusters remain here
+        # update "common.img_subcluster_idxes". Notice that active subclusters only remain here
         #for j,x in enumerate(subcluster.list_x):
             #common.img_subcluster_idxes[ subcluster.list_y[j] , x ] = i+1 # 0 means None. So "+1" is needed
         common.img_subcluster_idxes[ subcluster.list_y, subcluster.list_x ] = i+1 # 0 means None. So "+1" is needed
@@ -301,7 +301,7 @@ def cluster_new_pxls():
                 #sorted_subcluster_idxes = tmp_subcluster_idxes[ np.argsort(counts)[::-1] ] - 1
                 sorted_subcluster_idxes = tmp_subcluster_idxes[ np.argsort(-counts) ] - 1
                 for sorted_subcluster_idx in sorted_subcluster_idxes:
-                    if common.subclusters[sorted_subcluster_idx].add_to_subcluster(np_new_x, np_new_y, np_new_polarity, np_timestamp_ms): # the more dominant a subcluster is, the earlier it gets selected.
+                    if common.subclusters[sorted_subcluster_idx].add_to_subcluster(np_new_x, np_new_y, np_new_polarity, np_timestamp_ms): # the more dominant a subcluster is, the earlier it gets selected
                         # when the func returned 1, it means the "new_pxl" has been added to the subcluster
                         clustered_flg = 1
                         break
@@ -537,10 +537,10 @@ def save_subcluster(subcluster):
     if( len(subcluster.track_history) > 2 ): # to be written to the output file, a subcluster needs to have more than 2 history records of tracking
         (len_subcluster_max,) = subcluster.track_history[:,4:5].max(axis=0)
         if len_subcluster_max > 2: # to be written to the output file, a subcluster needs to have more than 2 "len_pxls" at its peak
-            common.f_sub.write( ( subcluster.ID ).to_bytes(4, byteorder='little') ) # ID 1byte
+            common.f_sub.write( ( subcluster.ID ).to_bytes(4, byteorder='little') ) # ID. 4 bytes
 
             last_timestamp_ms = subcluster.event_history[0][0] # head of event history. numpy.int32(4 bytes)
-            common.f_sub.write( ( last_timestamp_ms ).tobytes() ) # first time stamp. 4 bytes
+            common.f_sub.write( ( last_timestamp_ms ).tobytes() ) # first timestamp. 4 bytes
             for event_entry in subcluster.event_history: # event history
                 # record only the timestamp difference in milliseconds from the previous entry
                 common.f_sub.write( ( event_entry[0]-last_timestamp_ms ).astype(np.int16).tobytes() ) # 2bytes
@@ -590,8 +590,8 @@ def close_files(flg_subcluster):
             common.f_sub.close()
             f_sub_operation(config_by_gui.LIST_BORDER_TIME[ common.border_time_idx-1 ], round(common.timestamp_ms/1000), cur_f_path=common.f_sub_path, flg_rename=1)
 
-        if not common.f_input.closed:
-            common.f_input.close()
+        # if not common.f_input.closed:
+        #     common.f_input.close()
 
         if common.f_bin_border != None:
             if not common.f_bin_border.closed:
@@ -759,53 +759,181 @@ def process_data(flg_subcluster, flg_evs2video):
     common.last_time = time.time() # in order to measure elapsed time
 
     for raw_or_bin_path in common.list_raw_or_bin_path:
-        common.f_input = open(raw_or_bin_path, "rb")
+        with open(raw_or_bin_path, "rb") as f_input:
+            if common.raw_file_mode:
+                # read the ascii header
+                for i in range(1000):
+                    byte = f_input.read(1)
+                    if byte == b'\x0A': # ASCII code for Line Feed
+                        byte_1st = f_input.read(1)
 
-        if common.raw_file_mode:
-            # read the ascii header
-            for i in range(1000):
-                byte = common.f_input.read(1)
-                if byte == b'\x0A': # ASCII code for Line Feed
-                    byte_1st = common.f_input.read(1)
+                        if byte_1st != b'\x25': # ASCII code for %
+                            byte_2nd = f_input.read(1)
 
-                    if byte_1st != b'\x25': # ASCII code for %
-                        byte_2nd = common.f_input.read(1)
+                            if byte_2nd != b'\x20': # ASCII code for Space
+                                break
 
-                        if byte_2nd != b'\x20': # ASCII code for Space
+            byte_1st = f_input.read(1)
+            byte_2nd = f_input.read(1)
+
+            # check if timestamp has been updated to valid range
+            if (timestamp <= list_border_time_us[0]):
+                while byte_1st: # while byte_1st != b'':
+                    #if ( int.from_bytes(byte_2nd, byteorder="big") & int.from_bytes(tmp_byte, byteorder="big") ) == int.from_bytes(tmp_byte, byteorder="big"):
+                    cur_event_type = byte_2nd[0] & config.MASK_EVENT_TYPE[0]
+
+                    if cur_event_type == config.EVENT_TYPE_TIME_LOW[0]:
+                        # concatenate 4 + 8 bits
+                        #timestamp = timestamp_offset + (time_high-time_high_1st)*4096 + ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0] # 16777216 = 4096*4096
+                        timestamp = time_high + ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0]
+
+                        display_elapsed_time(timestamp)
+
+                        # if timestamp has been updated to valid range, break
+                        if (timestamp >= list_border_time_us[0]) and (time_high != 4097):
+                            last_timestamp = timestamp
+                            if flg_subcluster and (not common.raw_file_mode):
+                                common.f_bin_border.write(f"{ os.path.basename(common.f_sub_path)[:-4] } is from { os.path.basename(raw_or_bin_path) }\n")
                             break
 
-        byte_1st = common.f_input.read(1)
-        byte_2nd = common.f_input.read(1)
+                    elif cur_event_type == config.EVENT_TYPE_TIME_HIGH[0]:
+                        # concatenate 4 + 8 bits
+                        if time_high == 4097:
+                            time_high_1st = ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0]
+                            time_high = 0
+                            last_time_high = time_high
+                            last_time_high_byte_1st = byte_1st[0]
 
-        # check if timestamp has been updated to valid range
-        if (timestamp <= list_border_time_us[0]):
-            while byte_1st: # while byte_1st != b'':
-                #if ( int.from_bytes(byte_2nd, byteorder="big") & int.from_bytes(tmp_byte, byteorder="big") ) == int.from_bytes(tmp_byte, byteorder="big"):
+                        elif byte_1st[0] != last_time_high_byte_1st:
+                            # when "byte_1st[0]" for "time_high" changed from the last time
+                            time_high = ( ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0] - time_high_1st + timestamp_offset ) * 4096
+
+                            if time_high < last_time_high:
+                                timestamp_offset += 4096
+                                time_high = ( ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0] - time_high_1st + timestamp_offset ) * 4096
+
+                            last_time_high = time_high
+                            last_time_high_byte_1st = byte_1st[0]
+
+                    # read the next 2 bytes
+                    byte_1st = f_input.read(1)
+                    byte_2nd = f_input.read(1)
+
+            # "while loop" which lasts until the EOF
+            while byte_1st:
                 cur_event_type = byte_2nd[0] & config.MASK_EVENT_TYPE[0]
 
-                if cur_event_type == config.EVENT_TYPE_TIME_LOW[0]:
-                    # concatenate 4 + 8 bits
-                    #timestamp = timestamp_offset + (time_high-time_high_1st)*4096 + ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0] # 16777216 = 4096*4096
-                    timestamp = time_high + ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0]
+                if cur_event_type == config.EVENT_TYPE_X_POS[0]:
+                    #cnter_x_pos += 1
 
+                    # check Contrast Detection polarity
+                    polarity = bool(byte_2nd[0] & config.MASK_VALUE_08[0]) # bool(0x0800 or 0x0000)
+
+                    # concatenate 3 + 8 bits
+                    if config.HORIZONTAL_OPTICAL_FLIP:
+                        tmp_x = config.WIDTH-1 - ( ( byte_2nd[0] & config.MASK_VALUE_07[0] )*256 + byte_1st[0] )
+                    else:
+                        tmp_x = ( byte_2nd[0] & config.MASK_VALUE_07[0] )*256 + byte_1st[0]
+
+                    add_new_pxl( tmp_x, tmp_y, polarity, flg_subcluster )
+
+                elif cur_event_type == config.EVENT_TYPE_CD_Y[0]:
+                    #cnter_cd_y += 1
+
+                    # concatenate 3 + 8 bits
+                    if config.VERTICAL_OPTICAL_FLIP:
+                        tmp_y = config.HEIGHT-1 - ( ( byte_2nd[0] & config.MASK_VALUE_07[0] )*256 + byte_1st[0] )
+                    else:
+                        tmp_y = ( byte_2nd[0] & config.MASK_VALUE_07[0] )*256 + byte_1st[0]
+
+                elif cur_event_type == config.EVENT_TYPE_TIME_LOW[0]:
+                    #cnter_time_low += 1
+
+                    # concatenate 4 + 8 bits
+                    timestamp = time_high + ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0]
+                    common.timestamp_ms = timestamp//1000
+
+                    detect_timestamp_jump(timestamp, last_timestamp)
                     display_elapsed_time(timestamp)
 
-                    # if timestamp has been updated to valid range, break
-                    if (timestamp >= list_border_time_us[0]) and (time_high != 4097):
-                        last_timestamp = timestamp
-                        if flg_subcluster and (not common.raw_file_mode):
-                            common.f_bin_border.write(f"{ os.path.basename(common.f_sub_path)[:-4] } is from { os.path.basename(raw_or_bin_path) }\n")
-                        break
+                    last_timestamp = timestamp
+
+                    if flg_subcluster and (not flg_evs2video):
+                        if ( timestamp - last_time_clustering_new_pxls ) >= config.CLUSTERING_NEW_PXLS_DUR:
+                            cluster_new_pxls()
+                            last_time_clustering_new_pxls = timestamp - (timestamp % config.CLUSTERING_NEW_PXLS_DUR) # update with truncation
+
+                        if ( timestamp - common.last_time_updating_subclusters ) >= config.UPDATING_SUBCLUSTERS_DUR:
+                            update_subclusters(common.timestamp_ms)
+                            common.last_time_updating_subclusters = timestamp - (timestamp % config.UPDATING_SUBCLUSTERS_DUR) # update with truncation
+
+
+
+                    if config_by_gui.ENABLE_MONITORING or (not flg_subcluster):
+                        if ( timestamp - last_frame_start_time ) >= frame_dur:
+                            if draw_img(timestamp, flg_subcluster):
+                                # when 'q' key is pressed, exit the program
+                                print("Interrupted by keyboard input")
+                                return 1
+                            last_frame_start_time = timestamp - (timestamp % frame_dur) # update with truncation
+
+                    if timestamp >= list_border_time_us[ common.border_time_idx ]:
+                        if common.border_time_idx == len( list_border_time_us ) - 1:
+                            # when the current timestamp exceeds "capture_end_time"
+                            print("Finished up to the capture_end_time")
+                            return 0
+
+                        if flg_subcluster:
+                            if not flg_evs2video:
+                                for subcluster in common.subclusters[:]:
+                                    save_subcluster(subcluster)
+
+                            common.f_sub.write( b'\x00\x00\x00\x00' ).to_bytes(4, byteorder='little') # marker of EOF
+                            common.f_sub.close()
+
+                            # reinitialize variables
+                            common.subclusters.clear()
+                            common.subcluster_cnter = 0
+                            common.subcluster_id = 0 # ID values only larger than 0 are used
+
+                            for idx in range( len(common.binary_img_buf) ):
+                                common.binary_img_buf[idx] = np.copy(common.blank_binary_img)
+
+                            common.img_subcluster_idxes = np.copy(common.blank_img_idx) # initialize "common.img_subcluster_idxes" with 0s
+
+                            f_sub_operation(config_by_gui.LIST_BORDER_TIME[ common.border_time_idx ], config_by_gui.LIST_BORDER_TIME[ common.border_time_idx+1 ], cur_f_path="", flg_rename=0)
+
+                            if not common.raw_file_mode:
+                                common.f_bin_border.write(f"{ os.path.basename(common.f_sub_path)[:-4] } is from { os.path.basename(raw_or_bin_path) }\n")
+
+                            if config_by_gui.ENABLE_MONITORING:
+                                common.video.release()
+
+                                video_path = common.f_sub_path[:-4] + "_sub.avi"
+                                common.video = cv2.VideoWriter(video_path, codec, clip_fps, (config.WIDTH, config.HEIGHT), isColor=True)
+                        else:
+                            common.video.release()
+                            common.isolated_subclusters.clear()
+                            common.clusters.clear()
+
+                            # read new "all_clusters"/"merged_clusters" pkl files
+                            with open(list_f_clusters[ common.border_time_idx ], 'rb') as f_pkl_nm:
+                                common.clusters = pickle.load(f_pkl_nm)
+                            print( str(common.border_time_idx) + ": Reading " + list_f_clusters[ common.border_time_idx ] + " finished.")
+
+                            with open(list_f_isolated_subclusters[ common.border_time_idx ] , 'rb') as f_pkl_nm:
+                                common.isolated_subclusters = pickle.load(f_pkl_nm)
+                            print( str(common.border_time_idx) + ": Reading " + list_f_isolated_subclusters[ common.border_time_idx ] + " finished.")
+
+                            common.video = cv2.VideoWriter(list_video_path[ common.border_time_idx ], codec, clip_fps, (config.WIDTH, config.HEIGHT), isColor=True)
+                        common.border_time_idx += 1
+
 
                 elif cur_event_type == config.EVENT_TYPE_TIME_HIGH[0]:
-                    # concatenate 4 + 8 bits
-                    if time_high == 4097:
-                        time_high_1st = ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0]
-                        time_high = 0
-                        last_time_high = time_high
-                        last_time_high_byte_1st = byte_1st[0]
+                    #cnter_time_high += 1
 
-                    elif byte_1st[0] != last_time_high_byte_1st:
+                    # concatenate 4 + 8 bits
+                    if byte_1st[0] != last_time_high_byte_1st:
                         # when "byte_1st[0]" for "time_high" changed from the last time
                         time_high = ( ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0] - time_high_1st + timestamp_offset ) * 4096
 
@@ -816,190 +944,60 @@ def process_data(flg_subcluster, flg_evs2video):
                         last_time_high = time_high
                         last_time_high_byte_1st = byte_1st[0]
 
-                # read the next 2 bytes
-                byte_1st = common.f_input.read(1)
-                byte_2nd = common.f_input.read(1)
+                elif cur_event_type == config.EVENT_TYPE_X_BASE[0]:
+                    #cnter_x_base += 1
 
-        # "while loop" which lasts until the EOF
-        while byte_1st:
-            cur_event_type = byte_2nd[0] & config.MASK_EVENT_TYPE[0]
+                    # check Contrast Detection Polarity
+                    polarity =  bool(byte_2nd[0] & config.MASK_VALUE_08[0]) # bool(0x0800 or 0x0000)
 
-            if cur_event_type == config.EVENT_TYPE_X_POS[0]:
-                #cnter_x_pos += 1
-
-                # check Contrast Detection polarity
-                polarity = bool(byte_2nd[0] & config.MASK_VALUE_08[0]) # bool(0x0800 or 0x0000)
-
-                # concatenate 3 + 8 bits
-                if config.HORIZONTAL_OPTICAL_FLIP:
-                    tmp_x = config.WIDTH-1 - ( ( byte_2nd[0] & config.MASK_VALUE_07[0] )*256 + byte_1st[0] )
-                else:
-                    tmp_x = ( byte_2nd[0] & config.MASK_VALUE_07[0] )*256 + byte_1st[0]
-
-                add_new_pxl( tmp_x, tmp_y, polarity, flg_subcluster )
-
-            elif cur_event_type == config.EVENT_TYPE_CD_Y[0]:
-                #cnter_cd_y += 1
-
-                # concatenate 3 + 8 bits
-                if config.VERTICAL_OPTICAL_FLIP:
-                    tmp_y = config.HEIGHT-1 - ( ( byte_2nd[0] & config.MASK_VALUE_07[0] )*256 + byte_1st[0] )
-                else:
-                    tmp_y = ( byte_2nd[0] & config.MASK_VALUE_07[0] )*256 + byte_1st[0]
-
-            elif cur_event_type == config.EVENT_TYPE_TIME_LOW[0]:
-                #cnter_time_low += 1
-
-                # concatenate 4 + 8 bits
-                timestamp = time_high + ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0]
-                common.timestamp_ms = timestamp//1000
-
-                detect_timestamp_jump(timestamp, last_timestamp)
-                display_elapsed_time(timestamp)
-
-                last_timestamp = timestamp
-
-                if flg_subcluster and (not flg_evs2video):
-                    if ( timestamp - last_time_clustering_new_pxls ) >= config.CLUSTERING_NEW_PXLS_DUR:
-                        cluster_new_pxls()
-                        last_time_clustering_new_pxls = timestamp - (timestamp % config.CLUSTERING_NEW_PXLS_DUR) # update with truncation
-
-                    if ( timestamp - common.last_time_updating_subclusters ) >= config.UPDATING_SUBCLUSTERS_DUR:
-                        update_subclusters(common.timestamp_ms)
-                        common.last_time_updating_subclusters = timestamp - (timestamp % config.UPDATING_SUBCLUSTERS_DUR) # update with truncation
-
-
-
-                if config_by_gui.ENABLE_MONITORING or (not flg_subcluster):
-                    if ( timestamp - last_frame_start_time ) >= frame_dur:
-                        if draw_img(timestamp, flg_subcluster):
-                            # when 'q' key is pressed, exit the program
-                            print("Interrupted by keyboard input")
-                            return 1
-                        last_frame_start_time = timestamp - (timestamp % frame_dur) # update with truncation
-
-                if timestamp >= list_border_time_us[ common.border_time_idx ]:
-                    if common.border_time_idx == len( list_border_time_us ) - 1:
-                        # when the current timestamp exceeds "capture_end_time"
-                        print("Finished up to the capture_end_time")
-                        return 0
-
-                    if flg_subcluster:
-                        if not flg_evs2video:
-                            for subcluster in common.subclusters[:]:
-                                save_subcluster(subcluster)
-
-                        common.f_sub.write( b'\x00\x00\x00\x00' ).to_bytes(4, byteorder='little') # marker of EOF
-                        common.f_sub.close()
-
-                        # reinitialize variables
-                        common.subclusters.clear()
-                        common.subcluster_cnter = 0
-                        common.subcluster_id = 0 # ID values only larger than 0 are used
-
-                        for idx in range( len(common.binary_img_buf) ):
-                            common.binary_img_buf[idx] = np.copy(common.blank_binary_img)
-
-                        common.img_subcluster_idxes = np.copy(common.blank_img_idx) # initialize "common.img_subcluster_idxes" with 0s
-
-                        f_sub_operation(config_by_gui.LIST_BORDER_TIME[ common.border_time_idx ], config_by_gui.LIST_BORDER_TIME[ common.border_time_idx+1 ], cur_f_path="", flg_rename=0)
-
-                        if not common.raw_file_mode:
-                            common.f_bin_border.write(f"{ os.path.basename(common.f_sub_path)[:-4] } is from { os.path.basename(raw_or_bin_path) }\n")
-
-                        if config_by_gui.ENABLE_MONITORING:
-                            common.video.release()
-
-                            video_path = common.f_sub_path[:-4] + "_sub.avi"
-                            common.video = cv2.VideoWriter(video_path, codec, clip_fps, (config.WIDTH, config.HEIGHT), isColor=True)
+                    # concatenate 3 + 8 bits
+                    if config.HORIZONTAL_OPTICAL_FLIP:
+                        x_base = config.WIDTH-1 - ( ( byte_2nd[0] & config.MASK_VALUE_07[0] )*256 + byte_1st[0] )
                     else:
-                        common.video.release()
-                        common.isolated_subclusters.clear()
-                        common.clusters.clear()
+                        x_base = ( byte_2nd[0] & config.MASK_VALUE_07[0] )*256 + byte_1st[0]
 
-                        # read new "all_clusters"/"merged_clusters" pkl files
-                        with open(list_f_clusters[ common.border_time_idx ], 'rb') as f_pkl_nm:
-                            common.clusters = pickle.load(f_pkl_nm)
-                        print( str(common.border_time_idx) + ": Reading " + list_f_clusters[ common.border_time_idx ] + " finished.")
+                elif cur_event_type == config.EVENT_TYPE_VECT_12[0]:
+                    bit_mask = 1
+                    for j in range(8):
+                        if byte_1st[0] & bit_mask:
+                            add_new_pxl( x_base, tmp_y, polarity, flg_subcluster )
+                        bit_mask = bit_mask << 1
+                        x_base = x_base + x_base_shift
 
-                        with open(list_f_isolated_subclusters[ common.border_time_idx ] , 'rb') as f_pkl_nm:
-                            common.isolated_subclusters = pickle.load(f_pkl_nm)
-                        print( str(common.border_time_idx) + ": Reading " + list_f_isolated_subclusters[ common.border_time_idx ] + " finished.")
+                    bit_mask = 1
+                    for j in range(4):
+                        if byte_2nd[0] & bit_mask:
+                            add_new_pxl( x_base, tmp_y, polarity, flg_subcluster )
+                        bit_mask = bit_mask << 1
+                        x_base = x_base + x_base_shift
 
-                        common.video = cv2.VideoWriter(list_video_path[ common.border_time_idx ], codec, clip_fps, (config.WIDTH, config.HEIGHT), isColor=True)
-                    common.border_time_idx += 1
+                elif cur_event_type == config.EVENT_TYPE_VECT_8[0]:
+                    bit_mask = 1
+                    for j in range(8):
+                        if byte_1st[0] & bit_mask:
+                            add_new_pxl( x_base, tmp_y, polarity, flg_subcluster )
+                        bit_mask = bit_mask << 1
+                        x_base = x_base + x_base_shift
 
+        #         elif cur_event_type == config.EVENT_TYPE_CONTINUED_4[0]:
+        #             pass
 
-            elif cur_event_type == config.EVENT_TYPE_TIME_HIGH[0]:
-                #cnter_time_high += 1
+        #         elif cur_event_type == config.EVENT_TYPE_EXT_TRIGGER[0]:
+        #             pass
 
-                # concatenate 4 + 8 bits
-                if byte_1st[0] != last_time_high_byte_1st:
-                    # when "byte_1st[0]" for "time_high" changed from the last time
-                    time_high = ( ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0] - time_high_1st + timestamp_offset ) * 4096
+        #         elif cur_event_type == config.EVENT_TYPE_OTHERS[0]:
+        #             pass
 
-                    if time_high < last_time_high:
-                        timestamp_offset += 4096
-                        time_high = ( ( byte_2nd[0] & config.MASK_VALUE_0F[0] )*256 + byte_1st[0] - time_high_1st + timestamp_offset ) * 4096
+        #         elif cur_event_type == config.EVENT_TYPE_CONTINUED_12[0]:
+        #             pass
 
-                    last_time_high = time_high
-                    last_time_high_byte_1st = byte_1st[0]
+        #         else :
+        #             pass
 
-            elif cur_event_type == config.EVENT_TYPE_X_BASE[0]:
-                #cnter_x_base += 1
+                # read the next 2 bytes
+                byte_1st = f_input.read(1)
+                byte_2nd = f_input.read(1)
 
-                # check Contrast Detection Polarity
-                polarity =  bool(byte_2nd[0] & config.MASK_VALUE_08[0]) # bool(0x0800 or 0x0000)
-
-                # concatenate 3 + 8 bits
-                if config.HORIZONTAL_OPTICAL_FLIP:
-                    x_base = config.WIDTH-1 - ( ( byte_2nd[0] & config.MASK_VALUE_07[0] )*256 + byte_1st[0] )
-                else:
-                    x_base = ( byte_2nd[0] & config.MASK_VALUE_07[0] )*256 + byte_1st[0]
-
-            elif cur_event_type == config.EVENT_TYPE_VECT_12[0]:
-                bit_mask = 1
-                for j in range(8):
-                    if byte_1st[0] & bit_mask:
-                        add_new_pxl( x_base, tmp_y, polarity, flg_subcluster )
-                    bit_mask = bit_mask << 1
-                    x_base = x_base + x_base_shift
-
-                bit_mask = 1
-                for j in range(4):
-                    if byte_2nd[0] & bit_mask:
-                        add_new_pxl( x_base, tmp_y, polarity, flg_subcluster )
-                    bit_mask = bit_mask << 1
-                    x_base = x_base + x_base_shift
-
-            elif cur_event_type == config.EVENT_TYPE_VECT_8[0]:
-                bit_mask = 1
-                for j in range(8):
-                    if byte_1st[0] & bit_mask:
-                        add_new_pxl( x_base, tmp_y, polarity, flg_subcluster )
-                    bit_mask = bit_mask << 1
-                    x_base = x_base + x_base_shift
-
-    #         elif cur_event_type == config.EVENT_TYPE_CONTINUED_4[0]:
-    #             pass
-
-    #         elif cur_event_type == config.EVENT_TYPE_EXT_TRIGGER[0]:
-    #             pass
-
-    #         elif cur_event_type == config.EVENT_TYPE_OTHERS[0]:
-    #             pass
-
-    #         elif cur_event_type == config.EVENT_TYPE_CONTINUED_12[0]:
-    #             pass
-
-    #         else :
-    #             pass
-
-            # read the next 2 bytes
-            byte_1st = common.f_input.read(1)
-            byte_2nd = common.f_input.read(1)
-
-        common.f_input.close()
     return 0
 
     # print( "cnter_time_low: " + str(cnter_time_low) )
