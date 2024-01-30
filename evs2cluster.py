@@ -139,6 +139,12 @@ class Sub_window(tk.Frame):
         tb_fc = ttk.Entry(frame_fc, width=12, textvariable=common.tb_fc_iv, justify=tk.RIGHT)
         tb_fc.pack(side=tk.LEFT)
         tb_fc.configure(state=tk.DISABLED)
+        
+        # textbox for the annotation of "Focused cluster"
+        common.tb_fc_sv = tk.StringVar()
+        tb_fca = ttk.Entry(frame_fc, width=12, textvariable=common.tb_fc_sv)
+        tb_fca.pack(side=tk.LEFT)
+        tb_fca.configure(state=tk.DISABLED)
 
 
         # subframe for "Selected cluster"
@@ -315,7 +321,7 @@ class Sub_window(tk.Frame):
                     cv2.imshow(self.player_obj.main_window, self.player_obj.frame)
 
 
-                if (common.cluster_idx_to_merge == -1) or (common.flg_annotation):
+                if common.cluster_idx_to_merge == -1:
                     common.cluster_idx_to_merge = i
                     common.tb_sc_iv.set(cluster.ID)
                     common.tb_msg_sv.set("Select annotation or another cluster.")
@@ -369,7 +375,7 @@ class Sub_window(tk.Frame):
             cluster_idx_to_be_unmerged = common.list_new_and_old_clusters[ common.valid_new_cluster_cnter ][0]
             common.clusters[cluster_idx_to_be_unmerged] = common.list_new_and_old_clusters[ common.valid_new_cluster_cnter ][2]
             common.list_new_and_old_clusters[ common.valid_new_cluster_cnter ][3].inactive_flg = 0
-            common.tb_msg_sv.set("Last merging was undone.")
+            common.tb_msg_sv.set("Merging was undone.")
         else:
             common.tb_msg_sv.set("Nothing more to undo.")
 
@@ -381,7 +387,7 @@ class Sub_window(tk.Frame):
             common.clusters[cluster_idx_to_be_remerged] = common.list_new_and_old_clusters[ common.valid_new_cluster_cnter ][1]
             common.list_new_and_old_clusters[ common.valid_new_cluster_cnter ][3].inactive_flg = 1
             common.valid_new_cluster_cnter += 1
-            common.tb_msg_sv.set("Last un-merging was redone.")
+            common.tb_msg_sv.set("Merging was redone.")
         else:
             common.tb_msg_sv.set("Nothing more to redo.")
 
@@ -420,9 +426,14 @@ class Sub_window(tk.Frame):
     def lb_anno_select_one(self, event):
         w = event.widget
         common.clusters[ common.cluster_idx_to_merge ].annotation = w.get( int(w.curselection()[0]) )
-        common.flg_annotation = 1
+        # common.flg_annotation = 1
         common.tb_msg_sv.set(f"Labeled cluster { common.clusters[ common.cluster_idx_to_merge ].ID } as {w.get( w.curselection()[0])}")
-
+        
+        common.cluster_idx_to_merge = -1
+        common.cluster_idx_to_be_merged = -1
+        common.tb_sc_iv.set(0)
+        common.tb_ctbm_iv.set(0)
+        
 
 
     def overwrite_pkl(self):
@@ -583,6 +594,7 @@ class Player():
 
                     xflg_focused_ID = 0 # succeeded to focus on a cluster
                     common.tb_fc_iv.set(cluster.ID)
+                    common.tb_fc_sv.set(cluster.annotation)
 
                     # draw Convex-Hull of the focused cluster
                     if draw_convex_hull(self, cur_rectangles, [255,255,0]):
@@ -590,7 +602,7 @@ class Player():
 
                     if flags == cv2.EVENT_FLAG_LBUTTON:
                         # At the event of left click, register as a cluster to merge or to be merged
-                        if (common.cluster_idx_to_merge == -1) or (common.flg_annotation):
+                        if common.cluster_idx_to_merge == -1:
                             common.cluster_idx_to_merge = i
                             common.tb_sc_iv.set(cluster.ID)
                             common.tb_msg_sv.set("Select annotation or another cluster.")
@@ -601,6 +613,7 @@ class Player():
                 
                 if xflg_focused_ID:
                     common.tb_fc_iv.set(0)
+                    common.tb_fc_sv.set("Label")
                     self.frame = copy.deepcopy(self.frame_ori)
                     cv2.imshow(self.main_window, self.frame)
     
@@ -936,9 +949,15 @@ class Main_window(gui_utils.Common_window):
 
 
 
+def closing_main_window():
+    if tk.messagebox.askokcancel("Close", "Do you want to close?"):
+        root.quit()
+
+
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("evs2cluster")
     Main_window(root).pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+    root.protocol("WM_DELETE_WINDOW", closing_main_window)
     root.mainloop()

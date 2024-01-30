@@ -279,37 +279,34 @@ class Main_window(gui_utils.Common_window):
         if not self.update_global_var():
             return
 
-        f_output_txt_var_velocity = open(config_by_gui.DIR_PATH + "/var_velocity.csv", 'a')
+        with open( config_by_gui.DIR_PATH + "/var_velocity.csv", 'a' ) as f_output_txt_var_velocity:
+            # plot the trajectories of all the clusters which, at least partially, existed from "start_ms" to "end_ms"
+            for cluster in self.clusters:
+                if self.start_ms <= cluster.last_track_t:
+                    if self.end_ms < cluster.first_track_t:
+                        break
 
-        # plot the trajectories of all the clusters which, at least partially, existed from "start_ms" to "end_ms"
-        for cluster in self.clusters:
-            if self.start_ms <= cluster.last_track_t:
-                if self.end_ms < cluster.first_track_t:
-                    break
+                    if cluster.var_velocity != 0.:
+                        # draw trajectory of the centroid
+                        if len(cluster.track_g_all_history) >= 2:
+                            # when "track_g_all_history" is long enough
 
-                if cluster.var_velocity != 0.:
-                    # draw trajectory of the centroid
-                    if len(cluster.track_g_all_history) >= 2:
-                        # when "track_g_all_history" is long enough
+                            f_output_txt_var_velocity.write( f"{cluster.ID},{cluster.var_velocity}\n" ) # save "var_velocity" to .txt
 
-                        f_output_txt_var_velocity.write( f"{cluster.ID},{cluster.var_velocity}\n" ) # save "var_velocity" to .txt
+                            # extract centroid x and y histories separately
+                            center_x_history = np.array( [ row[0] for row in cluster.track_g_all_history ] )
+                            center_y_history = np.array( [ row[1] for row in cluster.track_g_all_history ] )
 
-                        # extract centroid x and y histories separately
-                        center_x_history = np.array( [ row[0] for row in cluster.track_g_all_history ] )
-                        center_y_history = np.array( [ row[1] for row in cluster.track_g_all_history ] )
+                            # subtract the initial coordinates from "center_*_history" to make "center_*_history" start at the coordinate of 0
+                            center_x_history -= center_x_history[0]
+                            center_y_history -= center_y_history[0]
 
-                        # subtract the initial coordinates from "center_*_history" to make "center_*_history" start at the coordinate of 0
-                        center_x_history -= center_x_history[0]
-                        center_y_history -= center_y_history[0]
+                            # add offset for drawing
+                            center_x_history += self.center_x
+                            center_y_history += self.center_y
 
-                        # add offset for drawing
-                        center_x_history += self.center_x
-                        center_y_history += self.center_y
-
-                        for i in range( len(center_x_history)-1 ):
-                            cv2.line( self.img, ( int(center_x_history[i]), int(center_y_history[i]) ), ( int(center_x_history[i+1]), int(center_y_history[i+1]) ), [255,0,0], thickness=1 )
-
-        f_output_txt_var_velocity.close()
+                            for i in range( len(center_x_history)-1 ):
+                                cv2.line( self.img, ( int(center_x_history[i]), int(center_y_history[i]) ), ( int(center_x_history[i+1]), int(center_y_history[i+1]) ), [255,0,0], thickness=1 )
 
 
         # plot the trajectories of the focused clusters with a different color
@@ -351,9 +348,8 @@ class Main_window(gui_utils.Common_window):
         cv2.imwrite(config_by_gui.DIR_PATH + "/radar.png", self.img)
         print(f"\n.png file is saved to {config_by_gui.DIR_PATH}")
 
-        f_output_txt_var_velocity = open(config_by_gui.DIR_PATH + "/var_velocity.csv", 'a')
-        f_output_txt_var_velocity.write( "\n\n" ) # append two blank lines to "var_velocity.cs"
-        f_output_txt_var_velocity.close()
+        with open( config_by_gui.DIR_PATH + "/var_velocity.csv", 'a' ) as f_output_txt_var_velocity:
+            f_output_txt_var_velocity.write( "\n\n" ) # append two blank lines to "var_velocity.cs"
         print(f"\nUpdatig var_velocity.csv completed.\n")
 
 

@@ -9,8 +9,8 @@ from enum import Enum, unique
 # User-defined variables
 VERTICAL_OPTICAL_FLIP = 0 # optically flipped or not
 HORIZONTAL_OPTICAL_FLIP = 0 # optically flipped or not
-WIDTH = 1280
-HEIGHT = 720 #720 #736
+WIDTH = 1280 #346 #1280
+HEIGHT = 720 #260 #720 #736
 TIMESTAMP_JUMP_TH = 500 # [us]
 
 NUM_BINARY_IMG_BUF = 4
@@ -25,7 +25,7 @@ track_step_ms = UPDATING_SUBCLUSTERS_DUR // 1000
 coor_fft_fs = (1000*1000) // UPDATING_SUBCLUSTERS_DUR # sampling freq for coordinate FFT (default: 250 Hz (4ms period))
 
 SUBCLUSTER_TIMESTAMP_MILESTONE_STEP = 1000*1000*60 # default: 1 min (1000*1000*60us)
-SUBCLUSTER_DUR = 100 #6000 #1000000 # each pixel in a subcluster remains for "SUBCLUSTER_DUR" [ms]
+SUBCLUSTER_DUR = 100 #100 #6000 #1000000 # each pixel in a subcluster remains for "SUBCLUSTER_DUR" [ms]
 SUBCLUSTER_SIZE_LIMIT = 19 # allow for each subcluster to grow up to 20(=19+1)) pxl length
 
 LIST_BANNED_REGION = []
@@ -71,6 +71,19 @@ LIST_FQ_BORDER = [1., 2.15443469003188, 4.64158883361278, 10., 21.5443469003188]
 # when inference by neural network is enabled
 @unique
 class Plankton(Enum):
+    # Ksel = 0 # NIES-4543. NIES-4586. Karenia selliformis. Uzuben, Akashio
+    # Csp = 1 # NIES-2327. Cochlodinium sp. Uzuben, Akashio
+    # Acat = 2 # NIES-3445. Alexandrium catenella. Uzuben, Yudoku
+    # Pcon = 3 # NIES-3441. Prorocentrum concavum. Uzuben, Yudoku
+    # Pden = 4 # NIES-900. Prorocentrum dentatum. Uzuben, Yudoku
+    # Gsca = 5 # NIES-4118. Gambierdiscus scabrosus. Uzuben, Yudoku
+    # Oova = 6 # NIES-3351. Ostreopsis cf. ovata. Uzuben, Yudoku
+    # Gins = 7 # NIES-3605. Gyrodinium instriatum. Uzuben, Control
+    # Acar = 8 # NIES-331. Amphidinium carterae. Uzuben, Control
+    # Cmar_a = 9 # NIES-1. Chattonella marina var. antiqua. Raphido, Akashio
+    # Cmar_m = 10 # NIES-2394. Chattonella marina var. marina. Raphido, Akashio
+    # Hdim = 11 # NIES-716. Haramonas dimorpha. Raphido, Control
+    
     Passive = 0
     Pcra_C = 1 # Copepod adult
     Pcra_N = 2 # Copepod larva
@@ -86,6 +99,7 @@ class Plankton(Enum):
 #LIST_PLANKTON_NM = [Passive", "Copepod", "Nipponacmea", "Patiria", "Artemia", "Osedax", "Septifer"]
 
 NP_NORM_CEIL = np.array([0.5, 5., 11., 400., 400., 0.5, 0.1, 0.1, 0.1, 0.1, 1.01, 1.01, 3., 3., 3., 3., 3., 3., 3., 3., 3., 3.])
+#NP_NORM_CEIL = np.array([0.5, 5., 11., 400., 400., 0.5, 0.1, 0.1, 0.1, 0.1, 1.01, 1.01, 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 5., 5., 5., 5., 5.])
 
 W_I_H__PATH = "nn_param/w_i_h__mix.csv"
 W_H_O__PATH = "nn_param/w_h_o__mix.csv"
@@ -94,9 +108,9 @@ B_H_O__PATH = "nn_param/b_h_o__mix.csv"
 
 NUM_FEATURES = 22
 COLUMN_IDX_FEATURE_OFFSET = 3
-COLUMN_IDX_ANNOTATION = 31
-NUM_CLASSIFICATION = 5
-NUM_H_NORD = 20
+NUM_CLASSIFICATION = 5 #12
+COLUMN_IDX_ANNOTATION = COLUMN_IDX_FEATURE_OFFSET + NUM_FEATURES + 1 + NUM_CLASSIFICATION # 31 # COLUMN_IDX_FEATURE_OFFSET + NUM_FEATURES + NUM_INFERENCE(=1) + NUM_CLASSIFICATION
+NUM_H_NORD = 20 #26
 LEARNING_RATE = 0.1
 NUM_EPOCH = 10000
 

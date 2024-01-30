@@ -1,11 +1,12 @@
 # directory_path: the path to the directory where Index* subdirectories or .raw files are stored.
-DIR_PATH = r"E:\data"
+#DIR_PATH = r"C:\Users\0000140048\Videos\rec"
+DIR_PATH = r"D:\NIES\isolated"
 
 # target_list: the list of Index* subdirectories or .raw files to be processed
-LIST_TARGET = ["plankton_sample.raw"]
+LIST_TARGET = ["recording_2023-04-11_19-07-06.raw"]
 
 # enable_monitoring:0=disable monitoring during subcluster process and its avi output. 1=enable
-ENABLE_MONITORING = 1
+ENABLE_MONITORING = 0
 
 # neighbour_threshold: Default=1. Larger value results in shorter process time. If EVS data is too noisy, increase this value to filter out noise.
 NEIGHBOUR_TH = 1

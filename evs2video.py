@@ -47,7 +47,7 @@ class Main_window(gui_utils.Common_window):
 
 
         # frame for listbox and scrolledtext
-        frame_lb_st = ttk.Frame(root, padding=2)
+        frame_lb_st = ttk.Frame(common.root, padding=2)
         frame_lb_st.pack(anchor=tk.NW, expand=True, fill=tk.BOTH)
 
 
@@ -113,7 +113,7 @@ class Main_window(gui_utils.Common_window):
 
 
         # frame for "LIST_BORDER_TIME"
-        frame_lbt = ttk.Frame(root, padding=2)
+        frame_lbt = ttk.Frame(common.root, padding=2)
         frame_lbt.pack(expand=True, fill=tk.X)
 
         # label for "LIST_BORDER_TIME"
@@ -138,7 +138,7 @@ class Main_window(gui_utils.Common_window):
 
 
         # frame for buttons
-        frame_btn = ttk.Frame(root, padding=2)
+        frame_btn = ttk.Frame(common.root, padding=2)
         frame_btn.pack()
 
         # button for starting process
@@ -222,8 +222,15 @@ class Main_window(gui_utils.Common_window):
 
 
 
+def closing_main_window():
+    if tk.messagebox.askokcancel("Close", "Do you want to close?"):
+        common.root.quit()
+
+
+
 if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("evs2video")
-    Main_window(root).pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-    root.mainloop()
+    common.root = tk.Tk()
+    common.root.title("evs2video")
+    Main_window(common.root).pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+    common.root.protocol("WM_DELETE_WINDOW", closing_main_window)
+    common.root.mainloop()

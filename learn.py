@@ -276,7 +276,7 @@ class Main_window(gui_utils.Common_window):
                         continue # skip a line of .pkl file path
                     list_cluster_feature = list( map( float, list_cluster_feature_txt[ config.COLUMN_IDX_FEATURE_OFFSET:(config.COLUMN_IDX_FEATURE_OFFSET+config.NUM_FEATURES) ] ) ) # convert to a list of float
 
-                    label_txt = list_cluster_feature_txt[ config. COLUMN_IDX_ANNOTATION ] # read label string
+                    label_txt = list_cluster_feature_txt[ config.COLUMN_IDX_ANNOTATION ] # read label string
                     if len(label_txt) >= 1:
                         while (label_txt[-1] == '\n') or (label_txt[-1] == '\r'): # omit '\n' or '\r' at the end
                             label_txt = label_txt[:-1]
@@ -285,7 +285,7 @@ class Main_window(gui_utils.Common_window):
                     
                     #print(config.Plankton[label_txt].name, config.Plankton[label_txt].value)
                     label = [0.] * config.NUM_CLASSIFICATION
-                    if (0 <= config.Plankton[label_txt].value) & (config.Plankton[label_txt].value <= 4):
+                    if (0 <= config.Plankton[label_txt].value) & (config.Plankton[label_txt].value <= (config.NUM_CLASSIFICATION-1)):
                         # when "label_txt" is one of the valid strings (annotations)
                         label[ config.Plankton[label_txt].value - 0 ] = 1. # convert to a label vector (one-hot vector)
                         list_input.append(list_cluster_feature) # append to the end of feature vectors
@@ -306,88 +306,112 @@ class Main_window(gui_utils.Common_window):
 
     def machine_learning(self):
         print("Teacher data:")
-        np_array_teacher_input, np_array_teacher_label = self.read_csv(self.list_f_teacher, self.teacher_path_sv)
+        np_array_teacher_input_ori, np_array_teacher_label_ori = self.read_csv(self.list_f_teacher, self.teacher_path_sv)
 
+        # shuffle data and labels synchronously
+        teacher_idx = np.random.permutation( len(np_array_teacher_label_ori) )
+        np_array_teacher_input, np_array_teacher_label = np_array_teacher_input_ori[teacher_idx], np_array_teacher_label_ori[teacher_idx]
+        
         print("Test data:")
-        np_array_test_input, np_array_test_label = self.read_csv(self.list_f_test, self.test_path_sv)
+        np_array_test_input_ori, np_array_test_label_ori = self.read_csv(self.list_f_test, self.test_path_sv)
+
+        # shuffle data and labels synchronously
+        test_idx = np.random.permutation( len(np_array_test_label_ori) )
+        np_array_test_input, np_array_test_label = np_array_test_input_ori[test_idx], np_array_test_label_ori[test_idx]
+
 
         # machine learning
-        f_learning_curve_txt = open( self.test_path_sv.get() + "/learning_curve.csv", 'w' )
+        with open( self.test_path_sv.get() + "/learning_curve.csv", 'w' ) as f_learning_curve_txt:
+            highest_test_accuracy = 0.
 
-        highest_test_accuracy = 0.
+            b_i_h = np.zeros((config.NUM_H_NORD, 1))
+            b_h_o = np.zeros((config.NUM_CLASSIFICATION, 1))
+            w_i_h = np.random.uniform(-0.5, 0.5, (config.NUM_H_NORD, config.NUM_FEATURES))
+            w_h_o = np.random.uniform(-0.5, 0.5, (config.NUM_CLASSIFICATION, config.NUM_H_NORD))
+            #np.savetxt("nn_param/w_i_h__seed.csv", w_i_h, delimiter=',')
+            #np.savetxt("nn_param/w_h_o__seed.csv", w_h_o, delimiter=',')
+            #w_i_h = np.loadtxt("nn_param/w_i_h__seed.csv", delimiter=',')
+            #w_h_o = np.loadtxt("nn_param/w_h_o__seed.csv", delimiter=',')
 
-        b_i_h = np.zeros((config.NUM_H_NORD, 1))
-        b_h_o = np.zeros((config.NUM_CLASSIFICATION, 1))
-        w_i_h = np.random.uniform(-0.5, 0.5, (config.NUM_H_NORD, config.NUM_FEATURES))
-        w_h_o = np.random.uniform(-0.5, 0.5, (config.NUM_CLASSIFICATION, config.NUM_H_NORD))
-        #np.savetxt("nn_param/w_i_h__seed.csv", w_i_h, delimiter=',')
-        #np.savetxt("nn_param/w_h_o__seed.csv", w_h_o, delimiter=',')
-        #w_i_h = np.loadtxt("nn_param/w_i_h__seed.csv", delimiter=',')
-        #w_h_o = np.loadtxt("nn_param/w_h_o__seed.csv", delimiter=',')
+            for epoch in range(config.NUM_EPOCH):
+                # forward and back propagation with teacher data
+                pseudo_teacher_correct_cnter = 0 # initialize
+                for teacher_input, label in zip(np_array_teacher_input, np_array_teacher_label):
+                    teacher_input.shape += (1,)
+                    label.shape += (1,)
 
-        for epoch in range(config.NUM_EPOCH):
-            # forward and back propagation with teacher data
-            teacher_correct_cnter = 0 # initialize
-            for teacher_input, label in zip(np_array_teacher_input, np_array_teacher_label):
-                teacher_input.shape += (1,)
-                label.shape += (1,)
+                    # input to hidden layer
+                    h_tmp = b_i_h + w_i_h @ teacher_input
+                    h = 1 / (1 + np.exp(-h_tmp))
+                    # hidden to output layer
+                    o_tmp = b_h_o + w_h_o @ h
+                    o = 1 / (1 + np.exp(-o_tmp))
 
-                # input to hidden layer
-                h_tmp = b_i_h + w_i_h @ teacher_input
-                h = 1 / (1 + np.exp(-h_tmp))
-                # hidden to output layer
-                o_tmp = b_h_o + w_h_o @ h
-                o = 1 / (1 + np.exp(-o_tmp))
+                    # count correct answer
+                    pseudo_teacher_correct_cnter += int(np.argmax(o) == np.argmax(label))
 
-                # count correct answer
-                teacher_correct_cnter += int(np.argmax(o) == np.argmax(label))
+                    # calc delta
+                    delta_o = (o - label) * (o * (1 - o))
+                    delta_h = np.transpose(w_h_o) @ delta_o * (h * (1 - h))
 
-                # calc delta
-                delta_o = (o - label) * (o * (1 - o))
-                delta_h = np.transpose(w_h_o) @ delta_o * (h * (1 - h))
+                    # from output back to hidden layer
+                    w_h_o -= config.LEARNING_RATE * delta_o @ np.transpose(h)
+                    b_h_o -= config.LEARNING_RATE * delta_o
+                    # from hidden back to input layer
+                    w_i_h -= config.LEARNING_RATE * delta_h @ np.transpose(teacher_input)
+                    b_i_h -= config.LEARNING_RATE * delta_h
 
-                # from output back to hidden layer
-                w_h_o -= config.LEARNING_RATE * delta_o @ np.transpose(h)
-                b_h_o -= config.LEARNING_RATE * delta_o
-                # from hidden back to input layer
-                w_i_h -= config.LEARNING_RATE * delta_h @ np.transpose(teacher_input)
-                b_i_h -= config.LEARNING_RATE * delta_h
+                # validation with teacher data at this epoch
+                teacher_correct_cnter = 0 # initialize
+                for teacher_input, label in zip(np_array_teacher_input, np_array_teacher_label):
+                    teacher_input.shape += (1,)
+                    label.shape += (1,)
 
-            # validation with test data at this epoch
-            test_correct_cnter = 0 # initialize
-            for test_input, label in zip(np_array_test_input, np_array_test_label):
-                test_input.shape += (1,)
-                label.shape += (1,)
+                    # input to hidden layer
+                    h_tmp = b_i_h + w_i_h @ teacher_input
+                    h = 1 / (1 + np.exp(-h_tmp))
+                    # hidden to output layer
+                    o_tmp = b_h_o + w_h_o @ h
+                    o = 1 / (1 + np.exp(-o_tmp))
 
-                # input to hidden layer
-                h_tmp = b_i_h + w_i_h @ test_input
-                h = 1 / (1 + np.exp(-h_tmp))
-                # hidden to output layer
-                o_tmp = b_h_o + w_h_o @ h
-                o = 1 / (1 + np.exp(-o_tmp))
+                    # count correct answer
+                    teacher_correct_cnter += int(np.argmax(o) == np.argmax(label))
 
-                # count correct answer
-                test_correct_cnter += int(np.argmax(o) == np.argmax(label))
+                # validation with test data at this epoch
+                test_correct_cnter = 0 # initialize
+                for test_input, label in zip(np_array_test_input, np_array_test_label):
+                    test_input.shape += (1,)
+                    label.shape += (1,)
 
-            # calc accuracy
-            teacher_accuracy = (teacher_correct_cnter / np_array_teacher_input.shape[0]) * 100
-            test_accuracy = (test_correct_cnter / np_array_test_input.shape[0]) * 100
+                    # input to hidden layer
+                    h_tmp = b_i_h + w_i_h @ test_input
+                    h = 1 / (1 + np.exp(-h_tmp))
+                    # hidden to output layer
+                    o_tmp = b_h_o + w_h_o @ h
+                    o = 1 / (1 + np.exp(-o_tmp))
 
-            # preserve the best weights
-            if test_accuracy >= highest_test_accuracy:
-                highest_test_accuracy = test_accuracy
-                w_i_h_best = copy.deepcopy(w_i_h)
-                w_h_o_best = copy.deepcopy(w_h_o)
-                b_i_h_best = copy.deepcopy(b_i_h)
-                b_h_o_best = copy.deepcopy(b_h_o)
+                    # count correct answer
+                    test_correct_cnter += int(np.argmax(o) == np.argmax(label))
 
-            # write to "learning_curve.csv"
-            f_learning_curve_txt.write(f"{epoch+1},{teacher_accuracy},{test_accuracy}\n")
+                # calc accuracy
+                pseudo_teacher_accuracy = (pseudo_teacher_correct_cnter / np_array_teacher_input.shape[0]) * 100
+                teacher_accuracy = (teacher_correct_cnter / np_array_teacher_input.shape[0]) * 100
+                test_accuracy = (test_correct_cnter / np_array_test_input.shape[0]) * 100
 
-            if epoch%100 == 99:
-                print(f"@{epoch+1} Teacher: {round(teacher_accuracy, 2)}% , Test: {round(test_accuracy, 2)}%")
+                # preserve the best weights
+                if test_accuracy >= highest_test_accuracy:
+                    highest_test_accuracy = test_accuracy
+                    w_i_h_best = copy.deepcopy(w_i_h)
+                    w_h_o_best = copy.deepcopy(w_h_o)
+                    b_i_h_best = copy.deepcopy(b_i_h)
+                    b_h_o_best = copy.deepcopy(b_h_o)
 
-        f_learning_curve_txt.close()
+                # write to "learning_curve.csv"
+                f_learning_curve_txt.write(f"{epoch+1},{teacher_accuracy},{test_accuracy}\n")
+
+                if epoch%100 == 99:
+                    print(f"@{epoch+1} Pseudo teacher: {round(pseudo_teacher_accuracy, 2)}% , Teacher: {round(teacher_accuracy, 2)}% , Test: {round(test_accuracy, 2)}%")
+
         print(f"\nHighest accuracy with test data: {round(highest_test_accuracy, 2)}%")
 
 
