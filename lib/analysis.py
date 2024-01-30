@@ -184,7 +184,7 @@ def custom_fft(fs, plt_path, cluster, array, ylabel_name, bool_coor):
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Amplitude [dB]')
     plt.grid()
-    plt.savefig( plt_path, dpi=100, facecolor="white" )
+    plt.savefig( plt_path, dpi=100, facecolor="white", bbox_inches="tight" )
     plt.close()
 
     # below are remaining codes from the past when a shifting fixed-duration-window was adopted for FFT
@@ -250,6 +250,7 @@ def main(target_nm):
         f_output_txt_feature.write( ",pos length ratio(sq),pos width ratio(sq),neg length ratio(sq),neg width ratio(sq),pos to neg length ratio(sq),pos to neg width ratio(sq)")
         f_output_txt_feature.write( ",event fft peaks(<1Hz),event fft peaks(<2.2Hz),event fft peaks(<4.6Hz),event fft peaks(<10Hz),event fft peaks(<22Hz),event fft peaks(>=22Hz)")
         f_output_txt_feature.write( ",coordinate fft peaks(<1Hz),coordinate fft peaks(<2.2Hz),coordinate fft peaks(<4.6Hz),coordinate fft peaks(>=4.6Hz)" )
+        # f_output_txt_feature.write( ",inference,Ksel score,Csp score,Acat score,Pcon score,Pden score,Gsca score,Oova score,Gins score,Acar score,Cmar_a score,Cmar_m score,Hdim score,annotation\n" )
         f_output_txt_feature.write( ",inference,Passive score,Pcra_C score,Pcra_N score,Nfus score,Ppec score, annotation\n" )
 
     list_num_vs_time = [] # idx: minute, value: num of moving objects
@@ -793,15 +794,13 @@ def main(target_nm):
 
 
     # write num_vs_minute.csv and num_vs_width.csv
-    f_output_txt_num_vs_time = open(common.analysis_path + "num_vs_minute.csv", "w")
-    for idx,item in enumerate(list_num_vs_time):
-        f_output_txt_num_vs_time.write( f"{idx+1},{item[0]},{item[1]},{item[2]}\n" )
-    f_output_txt_num_vs_time.close()
+    with open( common.analysis_path + "num_vs_minute.csv", 'w' ) as f_output_txt_num_vs_time:
+        for idx,item in enumerate(list_num_vs_time):
+            f_output_txt_num_vs_time.write( f"{idx+1},{item[0]},{item[1]},{item[2]}\n" )
 
-    f_output_txt_num_vs_width = open(common.analysis_path + "num_vs_width.csv", "w")
-    for idx,item in enumerate(list_num_vs_width):
-        f_output_txt_num_vs_width.write( f"{idx},{item}\n" )
-    f_output_txt_num_vs_width.close()
+    with open( common.analysis_path + "num_vs_width.csv", 'w' ) as f_output_txt_num_vs_width:
+        for idx,item in enumerate(list_num_vs_width):
+            f_output_txt_num_vs_width.write( f"{idx},{item}\n" )
 
     print(f"\nAnalyzing clusters finished at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 

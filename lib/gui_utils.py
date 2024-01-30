@@ -83,8 +83,9 @@ class Common_window(tk.Frame):
             messagebox.showwarning("Warning", "No folder or .raw file is selected.")
             return 0
 
-        if (config_by_gui.NEIGHBOUR_TH <= 0):
-            messagebox.showwarning("Warning", "NEIGHBOUR_TH needs to be a positive integer.")
+        if (config_by_gui.NEIGHBOUR_TH < 0):
+            # messagebox.showwarning("Warning", "NEIGHBOUR_TH needs to be a positive integer.")
+            messagebox.showwarning("Warning", "NEIGHBOUR_TH cannot be a negative integer.")
             return 0
 
         len_list_border_time = len(config_by_gui.LIST_BORDER_TIME)
@@ -134,38 +135,35 @@ class Common_window(tk.Frame):
 
     def overwrite_config_by_gui_py(self, lb):
         if self.update_global_var(lb):
-            f_config_by_gui = open("config_by_gui.py", 'w')
+            with open("config_by_gui.py", 'w') as f_config_by_gui:
+                f_config_by_gui.write("# directory_path: the path to the directory where Index* subdirectories or .raw files are stored.\n")
+                dir_path_txt = config_by_gui.DIR_PATH.replace('/', '\\')
+                f_config_by_gui.write(f"DIR_PATH = r\"{ dir_path_txt }\"\n\n")
 
-            f_config_by_gui.write("# directory_path: the path to the directory where Index* subdirectories or .raw files are stored.\n")
-            dir_path_txt = config_by_gui.DIR_PATH.replace('/', '\\')
-            f_config_by_gui.write(f"DIR_PATH = r\"{ dir_path_txt }\"\n\n")
+                f_config_by_gui.write("# target_list: the list of Index* subdirectories or .raw files to be processed\n")
+                f_config_by_gui.write(f"LIST_TARGET = [\"{ config_by_gui.LIST_TARGET[0] }\"")
+                for target in config_by_gui.LIST_TARGET[1:]:
+                    f_config_by_gui.write(f", \"{ target }\"")
+                f_config_by_gui.write("]\n\n")
 
-            f_config_by_gui.write("# target_list: the list of Index* subdirectories or .raw files to be processed\n")
-            f_config_by_gui.write(f"LIST_TARGET = [\"{ config_by_gui.LIST_TARGET[0] }\"")
-            for target in config_by_gui.LIST_TARGET[1:]:
-                f_config_by_gui.write(f", \"{ target }\"")
-            f_config_by_gui.write("]\n\n")
+                f_config_by_gui.write("# enable_monitoring:0=disable monitoring during subcluster process and its avi output. 1=enable\n")
+                f_config_by_gui.write(f"ENABLE_MONITORING = { config_by_gui.ENABLE_MONITORING }\n\n")
 
-            f_config_by_gui.write("# enable_monitoring:0=disable monitoring during subcluster process and its avi output. 1=enable\n")
-            f_config_by_gui.write(f"ENABLE_MONITORING = { config_by_gui.ENABLE_MONITORING }\n\n")
+                f_config_by_gui.write("# neighbour_threshold: Default=1. Larger value results in shorter process time. If EVS data is too noisy, increase this value to filter out noise.\n")
+                f_config_by_gui.write(f"NEIGHBOUR_TH = { config_by_gui.NEIGHBOUR_TH }\n\n")
 
-            f_config_by_gui.write("# neighbour_threshold: Default=1. Larger value results in shorter process time. If EVS data is too noisy, increase this value to filter out noise.\n")
-            f_config_by_gui.write(f"NEIGHBOUR_TH = { config_by_gui.NEIGHBOUR_TH }\n\n")
+                f_config_by_gui.write("# minutes_or_seconds: the unit for \"LIST_BORDER_TIME\". Options are \"min\" or \"sec\"\n")
+                f_config_by_gui.write(f"MIN_OR_SEC = \"{ config_by_gui.MIN_OR_SEC }\"\n\n")
 
-            f_config_by_gui.write("# minutes_or_seconds: the unit for \"LIST_BORDER_TIME\". Options are \"min\" or \"sec\"\n")
-            f_config_by_gui.write(f"MIN_OR_SEC = \"{ config_by_gui.MIN_OR_SEC }\"\n\n")
-
-            if config_by_gui.MIN_OR_SEC == "min":
-                list_border_time_to_save = [ item//60 for item in config_by_gui.LIST_BORDER_TIME ]
-            else:
-                list_border_time_to_save = config_by_gui.LIST_BORDER_TIME
-            f_config_by_gui.write("# border_time_list: [capture_start_time, 1st_section_end, 2nd_section_end, 3rd_section_end, ,,, ,capture_end_time]. Unit is selected by \"MIN_OR_SEC\"\n")
-            f_config_by_gui.write(f"LIST_BORDER_TIME = [{ list_border_time_to_save[0] }")
-            for border in list_border_time_to_save[1:]:
-                f_config_by_gui.write(f", { border }")
-            f_config_by_gui.write("]")
-
-            f_config_by_gui.close()
+                if config_by_gui.MIN_OR_SEC == "min":
+                    list_border_time_to_save = [ item//60 for item in config_by_gui.LIST_BORDER_TIME ]
+                else:
+                    list_border_time_to_save = config_by_gui.LIST_BORDER_TIME
+                f_config_by_gui.write("# border_time_list: [capture_start_time, 1st_section_end, 2nd_section_end, 3rd_section_end, ,,, ,capture_end_time]. Unit is selected by \"MIN_OR_SEC\"\n")
+                f_config_by_gui.write(f"LIST_BORDER_TIME = [{ list_border_time_to_save[0] }")
+                for border in list_border_time_to_save[1:]:
+                    f_config_by_gui.write(f", { border }")
+                f_config_by_gui.write("]")
 
             messagebox.showinfo("Message", "Successfully overwrote config_by_gui.py.")
         else:

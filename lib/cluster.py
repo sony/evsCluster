@@ -593,84 +593,82 @@ def main(target_nm):
 
         # Read .sub (while decoding)
 
-        f_bin_input = open(f_sub_path, "rb")  # open .sub file
-
-        # read the binary file: .sub containing subcluster info
-        while 1:
-            # read the subcluster IDs
-            new_subcluster_id = int.from_bytes(f_bin_input.read(4), "little")
-            if new_subcluster_id == 0: # this means EOF
-                break
-
-            # look for where to insert the new subcluster. Note a subcluster which died earlier is listed ahead in the file
-            insert_pos = len(all_subclusters_decoded) # look from the tail
-            while insert_pos > 0:
-                if all_subclusters_decoded[ insert_pos-1 ].ID > new_subcluster_id:
-                    insert_pos -= 1
-                else:
+        with open(f_sub_path, "rb") as f_bin_input: # open .sub file
+            # read the binary file: .sub containing subcluster info
+            while 1:
+                # read the subcluster IDs
+                new_subcluster_id = int.from_bytes(f_bin_input.read(4), "little")
+                if new_subcluster_id == 0: # this means EOF
                     break
 
-            new_xy_limit = [5000, 0, 5000, 0] # [xmin, xmax, ymin, ymax ] with initialization values
+                # look for where to insert the new subcluster. Note a subcluster which died earlier is listed ahead in the file
+                insert_pos = len(all_subclusters_decoded) # look from the tail
+                while insert_pos > 0:
+                    if all_subclusters_decoded[ insert_pos-1 ].ID > new_subcluster_id:
+                        insert_pos -= 1
+                    else:
+                        break
 
-            # read the first timestamp of event history
-            tmp_event_timestamp = int.from_bytes(f_bin_input.read(4), "little")
-            event_timestamp_diff = int.from_bytes(f_bin_input.read(2), "little")
+                new_xy_limit = [5000, 0, 5000, 0] # [xmin, xmax, ymin, ymax ] with initialization values
 
-            # read the subcluster event history
-            new_event_history = []
-            while 1:
-                tmp_event_timestamp += event_timestamp_diff # update "tmp_event_timestamp"
-                num_new_pxls = int.from_bytes(f_bin_input.read(2), "little")
-                num_new_pos_pxls = int.from_bytes(f_bin_input.read(2), "little")
-                new_event_history.append( [tmp_event_timestamp, num_new_pxls, num_new_pos_pxls] )
-
-                # next event entry
+                # read the first timestamp of event history
+                tmp_event_timestamp = int.from_bytes(f_bin_input.read(4), "little")
                 event_timestamp_diff = int.from_bytes(f_bin_input.read(2), "little")
-                if event_timestamp_diff == 0: # this means the end of the event history
-                    break
 
-            # read the subcluster track history 
-            new_track_r_history = [] # rectangles
-            first_track_timestamp = ( (new_event_history[0][0] + (config.track_step_ms-1))//config.track_step_ms ) * config.track_step_ms # the first track timestamp
-            last_track_timestamp = first_track_timestamp - config.track_step_ms # initialize
-            while 1:
-                xmin = int.from_bytes(f_bin_input.read(2), "little")
-                if xmin == 0xFFFF: # this means the end of the track history
-                    break
-                xmax = int.from_bytes(f_bin_input.read(2), "little")
-                ymin = int.from_bytes(f_bin_input.read(2), "little")
-                ymax = int.from_bytes(f_bin_input.read(2), "little")
-                len_pxls = int.from_bytes(f_bin_input.read(2), "little")
-                len_pos_pxls = int.from_bytes(f_bin_input.read(2), "little")
-                iteration = int.from_bytes(f_bin_input.read(1), "little")
+                # read the subcluster event history
+                new_event_history = []
+                while 1:
+                    tmp_event_timestamp += event_timestamp_diff # update "tmp_event_timestamp"
+                    num_new_pxls = int.from_bytes(f_bin_input.read(2), "little")
+                    num_new_pos_pxls = int.from_bytes(f_bin_input.read(2), "little")
+                    new_event_history.append( [tmp_event_timestamp, num_new_pxls, num_new_pos_pxls] )
 
-                for i in range( iteration ): # iterate for each track piece
-                    new_track_r_history.append( [ np.array([xmin, xmax, ymin, ymax, len_pxls, len_pos_pxls], dtype=np.int16) ] ) # "iteration" is not needed anymore
-                    last_track_timestamp += config.track_step_ms # increment timestamp by "track_step_ms" [ms]. This value depends on "UPDATING_SUBCLUSTERS_DUR"
+                    # next event entry
+                    event_timestamp_diff = int.from_bytes(f_bin_input.read(2), "little")
+                    if event_timestamp_diff == 0: # this means the end of the event history
+                        break
 
-                # new_xy_limit
-                if xmin < new_xy_limit[0]:
-                    new_xy_limit[0] = xmin
-                if xmax > new_xy_limit[1]:
-                    new_xy_limit[1] = xmax
-                if ymin < new_xy_limit[2]:
-                    new_xy_limit[2] = ymin
-                if ymax > new_xy_limit[3]:
-                    new_xy_limit[3] = ymax
+                # read the subcluster track history 
+                new_track_r_history = [] # rectangles
+                first_track_timestamp = ( (new_event_history[0][0] + (config.track_step_ms-1))//config.track_step_ms ) * config.track_step_ms # the first track timestamp
+                last_track_timestamp = first_track_timestamp - config.track_step_ms # initialize
+                while 1:
+                    xmin = int.from_bytes(f_bin_input.read(2), "little")
+                    if xmin == 0xFFFF: # this means the end of the track history
+                        break
+                    xmax = int.from_bytes(f_bin_input.read(2), "little")
+                    ymin = int.from_bytes(f_bin_input.read(2), "little")
+                    ymax = int.from_bytes(f_bin_input.read(2), "little")
+                    len_pxls = int.from_bytes(f_bin_input.read(2), "little")
+                    len_pos_pxls = int.from_bytes(f_bin_input.read(2), "little")
+                    iteration = int.from_bytes(f_bin_input.read(1), "little")
 
-            merged_idx = -1 # initialize. -1 means this subcluster has not been merged yet
+                    for i in range( iteration ): # iterate for each track piece
+                        new_track_r_history.append( [ np.array([xmin, xmax, ymin, ymax, len_pxls, len_pos_pxls], dtype=np.int16) ] ) # "iteration" is not needed anymore
+                        last_track_timestamp += config.track_step_ms # increment timestamp by "track_step_ms" [ms]. This value depends on "UPDATING_SUBCLUSTERS_DUR"
 
-            # check if the subcluster has always been confined in a banned region
-            for banned_region in config.LIST_BANNED_REGION:
-                if (banned_region[0] <= new_xy_limit[0]) and (new_xy_limit[1] <= banned_region[1]):
-                    if (banned_region[2] <= new_xy_limit[2]) and (new_xy_limit[3] <= banned_region[3]):
-                        merged_idx = -2 # overwrite with -2. -2 means this subcluster has always been confined in a banned region and will be ignored for the rest of process
+                    # new_xy_limit
+                    if xmin < new_xy_limit[0]:
+                        new_xy_limit[0] = xmin
+                    if xmax > new_xy_limit[1]:
+                        new_xy_limit[1] = xmax
+                    if ymin < new_xy_limit[2]:
+                        new_xy_limit[2] = ymin
+                    if ymax > new_xy_limit[3]:
+                        new_xy_limit[3] = ymax
 
-            # assemble all subcluster info and store into new Subcluster_decoded instance
-            all_subclusters_decoded.insert( insert_pos, utils.Subcluster_decoded( new_subcluster_id, merged_idx, first_track_timestamp, last_track_timestamp, new_xy_limit, new_event_history, new_track_r_history ) )
-            # now a subcluster born earlier has younger idx in "all_subclusters_decoded"
+                merged_idx = -1 # initialize. -1 means this subcluster has not been merged yet
 
-        f_bin_input.close()
+                # check if the subcluster has always been confined in a banned region
+                for banned_region in config.LIST_BANNED_REGION:
+                    if (banned_region[0] <= new_xy_limit[0]) and (new_xy_limit[1] <= banned_region[1]):
+                        if (banned_region[2] <= new_xy_limit[2]) and (new_xy_limit[3] <= banned_region[3]):
+                            merged_idx = -2 # overwrite with -2. -2 means this subcluster has always been confined in a banned region and will be ignored for the rest of process
+
+                # assemble all subcluster info and store into new Subcluster_decoded instance
+                all_subclusters_decoded.insert( insert_pos, utils.Subcluster_decoded( new_subcluster_id, merged_idx, first_track_timestamp, last_track_timestamp, new_xy_limit, new_event_history, new_track_r_history ) )
+                # now a subcluster born earlier has younger idx in "all_subclusters_decoded"
+
         print(f"Reading {f_sub_path} finished.")
 
 
